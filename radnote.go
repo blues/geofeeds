@@ -163,6 +163,7 @@ func metersApart(lat1 float64, lon1 float64, lat2 float64, lon2 float64) float64
 	const earthRadiusMeters = 6378100
 	const earthRadiusMetersDoubled = earthRadiusMeters * 2
 	var la2, lo2 float64
+	fmt.Printf("%f,%f -> %f,%f\n", lat1, lon1, lat2, lon2)
 
 	// convert to radians
 	// must cast radius as float to multiply later
