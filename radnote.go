@@ -38,6 +38,24 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	radnoteLock.Unlock()
 
+	// If GET, return the results
+	if r.Method == "GET" {
+		radnoteLock.Lock()
+		var eventJSON []byte
+		eventJSON, err = json.MarshalIndent(radnoteEvents, "", "    ")
+		if err == nil {
+			_, _ = w.Write(eventJSON)
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// If not POST, we don't know why we're here
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	// Get the event body
 	eventJSON, err := io.ReadAll(r.Body)
 	if err != nil {
