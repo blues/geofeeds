@@ -33,7 +33,7 @@ go build
 # Add this to the crontab so that it automatically starts on boot
 crontab -e
 # add this line
-@reboot screen -dmS udp-proxy /home/ubuntu/geofeeds/run.sh
+@reboot screen -dmS geofeeds /home/ubuntu/geofeeds/run.sh
 
 # Start it up
 sudo shutdown -r 0
@@ -54,4 +54,4 @@ ctrl-a <ESC>   // Allows you to use arrow keys to scroll back to
 # While you are in the screen session, remember that typing
 # the letter 'q' followed by <enter> will quit the session,
 # re-pull the latest code from the repo, and restart the
-# udp proxy server.  This is the way to re-deploy updates.
+# server.  This is the way to re-deploy updates.
