@@ -121,8 +121,6 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	radnoteLock.Lock()
 	if radnoteInWarningRegion(event.DeviceUID) {
 		fmt.Printf("WARNING: radnote %s is in warning region\n", event.DeviceUID)
-	} else {
-		fmt.Printf("radnote %s is in a safe region\n", event.DeviceUID)
 	}
 	radnoteLock.Unlock()
 
@@ -137,7 +135,6 @@ func radnoteInWarningRegion(deviceUID string) bool {
 	}
 
 	for _, e := range radnoteEvents {
-		fmt.Printf("eusv:%f configusv:%f dist:%f configdist:%f\n", e.Body.Usv, config.RadnoteWarningLevelUsv, metersApart(e.Event.BestLat, e.Event.BestLon, this.Event.BestLat, this.Event.BestLon), config.RadnoteWarningRegionMeters)
 		if e.Body.Usv >= config.RadnoteWarningLevelUsv {
 			if e.Event.BestLat != 0 || e.Event.BestLon != 0 {
 				if metersApart(e.Event.BestLat, e.Event.BestLon, this.Event.BestLat, this.Event.BestLon) <= config.RadnoteWarningRegionMeters {
