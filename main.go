@@ -18,6 +18,9 @@ import (
 // Main service entry point
 func main() {
 
+	// Load configuration
+	configLoad()
+
 	// Register root endpoint
 	http.HandleFunc("/", httpRootHandler)
 
