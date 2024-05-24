@@ -61,10 +61,13 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Retain the last event and persist the body
 	radnoteLock.Lock()
-	radnoteEvents[event.DeviceUID] = event
-	eventJSON, err = json.Marshal(radnoteEvents)
-	if err == nil {
-		err = os.WriteFile(configDataDirectory+radnoteFile, eventJSON, 0644)
+	currentEvent, exists := radnoteEvents[event.DeviceUID]
+	if !exists || event.When >= currentEvent.When {
+		radnoteEvents[event.DeviceUID] = event
+		eventJSON, err = json.Marshal(radnoteEvents)
+		if err == nil {
+			err = os.WriteFile(configDataDirectory+radnoteFile, eventJSON, 0644)
+		}
 	}
 	radnoteLock.Unlock()
 	if err != nil {
