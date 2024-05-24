@@ -43,6 +43,7 @@ func main() {
 func httpRootHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" && r.URL.Path == "/favicon.ico" {
 		w.WriteHeader(http.StatusOK)
+		return
 	}
 	w.WriteHeader(http.StatusNotImplemented)
 }
