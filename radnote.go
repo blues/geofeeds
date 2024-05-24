@@ -159,26 +159,17 @@ func radnoteInWarningRegion(deviceUID string) bool {
 // point coordinates are supplied in degrees and converted into rad. in the func
 //
 // distance returned is METERS
-func metersApart(lat1 float64, lon1 float64, lat2 float64, lon2 float64) float64 {
-	const earthRadiusMeters = 6378100
-	const earthRadiusMetersDoubled = earthRadiusMeters * 2
-	var la2, lo2 float64
-	fmt.Printf("%f,%f -> %f,%f\n", lat1, lon1, lat2, lon2)
-
-	// convert to radians
-	// must cast radius as float to multiply later
-	la2 = lat2 * math.Pi / 180
-	lo2 = lon2 * math.Pi / 180
-
-	// calculate
-	h := hsin(la2-lat1) + math.Cos(lat1)*math.Cos(la2)*hsin(lo2-lon1)
-
-	return earthRadiusMetersDoubled * math.Asin(math.Sqrt(h))
-
-}
-
-// haversin(θ) function
-// http://en.wikipedia.org/wiki/Haversine_formula
-func hsin(theta float64) float64 {
-	return math.Pow(math.Sin(theta/2), 2)
+func metersApart(lat1 float64, lon1 float64, lat2 float64, lon2 float64) (distanceMeters float64) {
+	const R = 6371
+	const degreesToRadians = (3.1415926536 / 180)
+	var dx, dy, dz float64
+	lon1 = lon1 - lon2
+	lon1 = lon1 * degreesToRadians
+	lat1 = lat1 * degreesToRadians
+	lat2 = lat2 * degreesToRadians
+	dz = math.Sin(lat1) - math.Sin(lat2)
+	dx = math.Cos(lon1)*math.Cos(lat1) - math.Cos(lat2)
+	dy = math.Sin(lon1) * math.Cos(lat1)
+	distanceMeters = 1000 * (math.Asin(math.Sqrt(math.Abs(dx*dx+dy*dy+dz*dz))/2) * 2 * R)
+	return
 }
