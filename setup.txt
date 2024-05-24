@@ -1,0 +1,57 @@
+
+# Install essentials and make sure they work
+sudo apt install emacs --assume-yes
+sudo apt install git --assume-yes
+
+# Purge any old version of golang sitting on the box
+sudo apt purge golang-go
+sudo apt autoremove --assume-yes
+
+# Install the latest golang
+sudo add-apt-repository ppa:longsleep/golang-backports -y
+sudo apt update
+sudo apt install golang-go --assume-yes
+
+# After many lessons learned about running servers in aws that
+# are guaranteed to stay up for years, make sure this var is set
+# correctly else the ubuntu instance WILL run out of disk space.
+sudo emacs /etc/apt/apt.conf.d/50unattended-upgrades
+# By default in linux, this Unattended-Upgrade is commented out,
+# so make sure it is commented-in.
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+# Note that from time to time it is also advisable to run this,
+# to clean up space.  I don't normally put this in crontab.  This
+# generally removes vast quantities of linux-aws-headers
+sudo apt-get -f install && sudo apt autoremove --purge
+
+# Copy the 'ray mode' version of the project's code down here
+git clone https://github.com/blues/geofeeds.git
+cd geofeeds
+go build
+
+# Add this to the crontab so that it automatically starts on boot
+crontab -e
+# add this line
+@reboot screen -dmS udp-proxy /home/ubuntu/geofeeds/run.sh
+
+# Start it up
+sudo shutdown -r 0
+
+# After you come up, do this command to see if it is running in
+# the background.
+screen -ls
+
+# In order to switch to it, use this command (which works because
+# it should be the only screen session running).  SEE NOTE BELOW.
+screen -r
+
+# NOTE that when you are in the screen session above, these are
+# the absolutely essential things to remember:
+ctrl-a d       // Detaches the screen session and returns to bash
+ctrl-a <ESC>   // Allows you to use arrow keys to scroll back to
+
+# While you are in the screen session, remember that typing
+# the letter 'q' followed by <enter> will quit the session,
+# re-pull the latest code from the repo, and restart the
+# udp proxy server.  This is the way to re-deploy updates.
