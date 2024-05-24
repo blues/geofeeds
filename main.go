@@ -18,14 +18,15 @@ import (
 // Main service entry point
 func main() {
 
-	// Register endpoint for udp-proxy.net lookups, which are
-	// performed when notehub starts up so that it knows
-	// what IP:PORT to issue to devices.
+	// Register root endpoint
 	http.HandleFunc("/", httpRootHandler)
 
 	// Register AWS health check endpoint
 	http.HandleFunc("/ping", httpPingHandler)
 	go func() { _ = http.ListenAndServe(":80", nil) }()
+
+	// Register radnote endpoint
+	http.HandleFunc("/radnote", httpRadnoteHandler)
 
 	// Spawn our signal handler
 	go signalHandler()
@@ -35,14 +36,17 @@ func main() {
 
 }
 
+// Root handler
+func httpRootHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" && r.URL.Path == "/favicon.ico" {
+		w.WriteHeader(http.StatusOK)
+	}
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Ping handler, for AWS health checks
 func httpPingHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(time.Now().UTC().Format("2006-01-02T15:04:05Z")))
-}
-
-// Root handler
-func httpRootHandler(w http.ResponseWriter, r *http.Request) {
-	_, _ = w.Write([]byte("root"))
 }
 
 func inputHandler() {
