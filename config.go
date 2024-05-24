@@ -13,7 +13,7 @@ type Config struct {
 var config Config
 
 // Fully-resolved data directory
-var configDataDirectory = os.Getenv("HOME") + "/data/"
+var configDataDirectory = "/home/ubuntu" + "/data/"
 
 // Load the config
 func configLoad() {
