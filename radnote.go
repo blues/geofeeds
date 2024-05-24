@@ -40,13 +40,13 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// If GET, return the results
 	if r.Method == "GET" {
+		w.WriteHeader(http.StatusOK)
 		radnoteLock.Lock()
 		var eventJSON []byte
 		eventJSON, err = json.MarshalIndent(radnoteEvents, "", "    ")
 		if err == nil {
 			_, _ = w.Write(eventJSON)
 		}
-		w.WriteHeader(http.StatusOK)
 		return
 	}
 
