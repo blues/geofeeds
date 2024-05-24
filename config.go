@@ -10,8 +10,8 @@ import (
 type Config struct {
 	// Generate a warning at or above this uSV level
 	RadnoteWarningLevelUsv float64 `json:"radnote_warning_at_usv,omitempty"`
-	// See https://en.wikipedia.org/wiki/Decimal_degrees
-	RadnoteWarningRegionDegrees float64 `json:"radnote_warning_region_degrees,omitempty"`
+	// Number of meters away if it's in a warning region
+	RadnoteWarningRegionMeters float64 `json:"radnote_warning_region_meters,omitempty"`
 }
 
 var config Config
