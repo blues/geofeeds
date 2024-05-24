@@ -53,6 +53,12 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Exit if not a data reading
+	if event.NotefileID != "_air.qo" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	// Retain the last event and persist the body
 	radnoteLock.Lock()
 	radnoteEvents[event.DeviceUID] = event
