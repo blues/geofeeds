@@ -120,9 +120,9 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	// For informational purposes, see if this radnote is within a warning zone
 	radnoteLock.Lock()
 	if radnoteInWarningRegion(event.DeviceUID) {
-		fmt.Printf("WARNING: radnote is in warning region\n")
+		fmt.Printf("WARNING: radnote %s is in warning region\n", event.DeviceUID)
 	} else {
-		fmt.Printf("WARNING: radnote is in a safe region\n")
+		fmt.Printf("radnote %s is in a safe region\n", event.DeviceUID)
 	}
 	radnoteLock.Unlock()
 
