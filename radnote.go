@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/blues/note-go/note"
+	"github.com/kr/jsonfeed"
 )
 
 // The body of a Radnote-generated event
@@ -65,6 +66,9 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		lat, latErr := strconv.ParseFloat(query.Get("lat"), 64)
 		lon, lonErr := strconv.ParseFloat(query.Get("lon"), 64)
+		fmt.Printf("QUERY: %+v\n", query)
+		fmt.Printf("lat: %s %f %s\n", query.Get("lat"), lat, latErr)
+		fmt.Printf("lon: %s %f %s\n", query.Get("lon"), lon, lonErr)
 		if latErr == nil && lonErr == nil && !(lat == 0 && lon == 0) {
 			generateJsonFeed(w, r, lat, lon)
 			return
@@ -196,14 +200,14 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	}
 
 	var i jsonfeed.Item
-	i.id = "1"
-	i.URL = fmt.Sprintf("https://geofeeds.net/%d?lat=%f&lon=%f", i.id, lat, lon)
+	i.ID = "1"
+	i.URL = fmt.Sprintf("https://geofeeds.net/radnote/%s?lat=%f&lon=%f", i.ID, lat, lon)
 	i.ContentText = string(oJSON)
-	i.DatePublished = time.Now().UTC().Format("2010-02-07T14:04:00-05:00")
+	i.DatePublished = time.Now().UTC()
 
 	var f jsonfeed.Feed
 	f.Version = "https://jsonfeed.org/version/1"
-	f.FeedURL = fmt.Sprintf("https://geofeeds.net?lat=%f&lon=%f", lat, lon)
+	f.FeedURL = fmt.Sprintf("https://geofeeds.net/radnote/?lat=%f&lon=%f", lat, lon)
 	f.Items = append(f.Items, i)
 
 	feedJSON, err := f.MarshalJSON()
