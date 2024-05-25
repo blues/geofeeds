@@ -207,6 +207,7 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 
 	var f jsonfeed.Feed
 	f.Version = "https://jsonfeed.org/version/1"
+	f.Title = fmt.Sprintf("radnote geofeed for %f,%f", lat, lon)
 	f.FeedURL = fmt.Sprintf("https://geofeeds.net/radnote/?lat=%f&lon=%f", lat, lon)
 	f.Items = append(f.Items, i)
 
