@@ -66,9 +66,6 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		lat, latErr := strconv.ParseFloat(query.Get("lat"), 64)
 		lon, lonErr := strconv.ParseFloat(query.Get("lon"), 64)
-		fmt.Printf("QUERY: %+v\n", query)
-		fmt.Printf("lat: %s %f %s\n", query.Get("lat"), lat, latErr)
-		fmt.Printf("lon: %s %f %s\n", query.Get("lon"), lon, lonErr)
 		if latErr == nil && lonErr == nil && !(lat == 0 && lon == 0) {
 			generateJsonFeed(w, r, lat, lon)
 			return
