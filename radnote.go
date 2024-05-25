@@ -11,7 +11,9 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/blues/note-go/note"
 )
@@ -58,6 +60,17 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// If GET, return the results
 	if r.Method == "GET" {
+
+		// See if lat/lon are specified
+		query := r.URL.Query()
+		lat, latErr := strconv.ParseFloat(query.Get("lat"), 64)
+		lon, lonErr := strconv.ParseFloat(query.Get("lon"), 64)
+		if latErr == nil && lonErr == nil && !(lat == 0 && lon == 0) {
+			generateJsonFeed(w, r, lat, lon)
+			return
+		}
+
+		// Just retrieve the list
 		w.WriteHeader(http.StatusOK)
 		radnoteLock.Lock()
 		var eventJSON []byte
@@ -117,27 +130,20 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("radnote: can't store %s: %s\n", radnoteFile, err)
 	}
 
-	// For informational purposes, see if this radnote is within a warning zone
-	radnoteLock.Lock()
-	if radnoteInWarningRegion(event.DeviceUID) {
-		fmt.Printf("WARNING: radnote %s is in warning region\n", event.DeviceUID)
-	}
-	radnoteLock.Unlock()
-
 }
 
 // See if a given radnote is within a warning region
-func radnoteInWarningRegion(deviceUID string) bool {
+func locationInWarningRegion(lat float64, lon float64) bool {
 
-	this, found := radnoteEvents[deviceUID]
-	if !found {
-		return false
-	}
+	// Lock during array scan
+	radnoteLock.Lock()
+	defer radnoteLock.Unlock()
 
+	// See if this location is within a warning zone
 	for _, e := range radnoteEvents {
 		if e.Body.Usv >= config.RadnoteWarningLevelUsv {
 			if e.Event.BestLat != 0 || e.Event.BestLon != 0 {
-				if metersApart(e.Event.BestLat, e.Event.BestLon, this.Event.BestLat, this.Event.BestLon) <= config.RadnoteWarningRegionMeters {
+				if metersApart(e.Event.BestLat, e.Event.BestLon, lat, lon) <= config.RadnoteWarningRegionMeters {
 					return true
 				}
 			}
@@ -169,4 +175,44 @@ func metersApart(lat1 float64, lon1 float64, lat2 float64, lon2 float64) (distan
 	dy = math.Sin(lon1) * math.Cos(lat1)
 	distanceMeters = 1000 * (math.Asin(math.Sqrt(math.Abs(dx*dx+dy*dy+dz*dz))/2) * 2 * R)
 	return
+}
+
+// Generate a JSON feed for the specified location
+func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon float64) {
+
+	o := map[string]interface{}{}
+	if locationInWarningRegion(lat, lon) {
+		o["warning"] = true
+		o["sample_mins"] = 15
+		o["outbound_mins"] = 60
+	} else {
+		o["warning"] = false
+	}
+	oJSON, err := json.Marshal(o)
+	if err != nil {
+		fmt.Printf("generateJsonFeed: %s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var i jsonfeed.Item
+	i.id = "1"
+	i.URL = fmt.Sprintf("https://geofeeds.net/%d?lat=%f&lon=%f", i.id, lat, lon)
+	i.ContentText = string(oJSON)
+	i.DatePublished = time.Now().UTC().Format("2010-02-07T14:04:00-05:00")
+
+	var f jsonfeed.Feed
+	f.Version = "https://jsonfeed.org/version/1"
+	f.FeedURL = fmt.Sprintf("https://geofeeds.net?lat=%f&lon=%f", lat, lon)
+	f.Items = append(f.Items, i)
+
+	feedJSON, err := f.MarshalJSON()
+	if err != nil {
+		fmt.Printf("generateJsonFeed: %s\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, _ = w.Write(feedJSON)
+
 }
