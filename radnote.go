@@ -66,11 +66,13 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		latStr := query.Get("lat")
 		lonStr := query.Get("lon")
+		radiusMetersStr := query.Get("radius_meters")
 		if latStr != "" && lonStr != "" {
 			lat, latErr := strconv.ParseFloat(latStr, 64)
 			lon, lonErr := strconv.ParseFloat(lonStr, 64)
-			if latErr == nil && lonErr == nil && !(lat == 0 && lon == 0) {
-				generateJsonFeed(w, r, lat, lon)
+			radiusMeters, radiusErr := strconv.ParseFloat(radiusMetersStr, 64)
+			if latErr == nil && lonErr == nil && radiusErr == nil && !(lat == 0 && lon == 0) {
+				generateJsonFeed(w, r, lat, lon, radiusMeters)
 				return
 			}
 		}
@@ -140,27 +142,6 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// See if a given radnote is within an alert region
-func locationInAlertRegion(lat float64, lon float64) bool {
-
-	// Lock during array scan
-	radnoteLock.Lock()
-	defer radnoteLock.Unlock()
-
-	// See if this location is within a alert zone
-	for _, e := range radnoteEvents {
-		if e.Body.Usv >= config.RadnoteAlertLevelUsv {
-			if e.Event.BestLat != 0 || e.Event.BestLon != 0 {
-				if metersApart(e.Event.BestLat, e.Event.BestLon, lat, lon) <= config.RadnoteAlertRegionMeters {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-
 // Distance function returns the distance (in meters) between two points of
 //
 //	a given longitude and latitude relatively accurately (using a spherical
@@ -186,16 +167,51 @@ func metersApart(lat1 float64, lon1 float64, lat2 float64, lon2 float64) (distan
 }
 
 // Generate a JSON feed for the specified location
-func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon float64) {
+func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon float64, radiusMeters float64) {
+
+	// If 0, make it a small region
+	if radiusMeters == 0 {
+		radiusMeters = 10
+	}
+
+	// See if this location is within the region
+	count := float64(0)
+	min := float64(0)
+	max := float64(0)
+	sum := float64(0)
+	radnoteLock.Lock()
+	for _, e := range radnoteEvents {
+		if e.Event.BestLat != 0 || e.Event.BestLon != 0 {
+			if metersApart(e.Event.BestLat, e.Event.BestLon, lat, lon) <= radiusMeters {
+				if count == 0 {
+					min = e.Body.Usv
+					max = e.Body.Usv
+				}
+				if e.Body.Usv < min {
+					min = e.Body.Usv
+				}
+				if e.Body.Usv > max {
+					max = e.Body.Usv
+				}
+				sum += e.Body.Usv
+				count++
+			}
+		}
+	}
+	radnoteLock.Unlock()
+	avg := float64(0)
+	if count > 0 {
+		avg = sum / count
+	}
 
 	o := map[string]interface{}{}
-	if locationInAlertRegion(lat, lon) {
-		o["alert"] = true
-		o["alert_time"] = time.Now().UTC().Unix()
-		o["alert_mins"] = config.RadnoteAlertMins
-	} else {
-		o["alert"] = false
-	}
+	o["lat"] = lat
+	o["lon"] = lon
+	o["radius_meters"] = radiusMeters
+	o["count"] = count
+	o["usv_min"] = min
+	o["usv_max"] = max
+	o["usv_avg"] = avg
 	oJSON, err := json.Marshal(o)
 	if err != nil {
 		fmt.Printf("generateJsonFeed: %s\n", err)
@@ -204,7 +220,7 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	}
 
 	var i jsonfeed.Item
-	i.ID = "alert"
+	i.ID = "region"
 	i.URL = fmt.Sprintf("https://geofeeds.net/radnote/%s?lat=%f&lon=%f", i.ID, lat, lon)
 	i.ContentText = string(oJSON)
 	i.DatePublished = time.Now().UTC()

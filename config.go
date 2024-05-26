@@ -8,12 +8,6 @@ import (
 
 // Config file
 type Config struct {
-	// Generate a alert at or above this uSV level
-	RadnoteAlertLevelUsv float64 `json:"radnote_alert_at_usv,omitempty"`
-	// Number of meters away if it's in a alert region
-	RadnoteAlertRegionMeters float64 `json:"radnote_alert_region_meters,omitempty"`
-	// Generate an alert for this many minutes
-	RadnoteAlertMins int64 `json:"radnote_alert_minutes,omitempty"`
 }
 
 var config Config
