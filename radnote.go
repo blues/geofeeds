@@ -191,8 +191,6 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	o := map[string]interface{}{}
 	if locationInAlertRegion(lat, lon) {
 		o["alert"] = true
-		o["sample_mins"] = config.RadnoteAlertSampleMins
-		o["sync_mins"] = config.RadnoteAlertSyncMins
 		o["alert_time"] = time.Now().UTC().Unix()
 		o["alert_mins"] = config.RadnoteAlertMins
 	} else {

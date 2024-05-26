@@ -14,10 +14,6 @@ type Config struct {
 	RadnoteAlertRegionMeters float64 `json:"radnote_alert_region_meters,omitempty"`
 	// Generate an alert for this many minutes
 	RadnoteAlertMins int64 `json:"radnote_alert_minutes,omitempty"`
-	// If an alert is active, sample with this period
-	RadnoteAlertSampleMins int64 `json:"radnote_alert_sample_minutes,omitempty"`
-	// If an alert is active, sync with this period
-	RadnoteAlertSyncMins int64 `json:"radnote_alert_sync_minutes,omitempty"`
 }
 
 var config Config
