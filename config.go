@@ -8,10 +8,16 @@ import (
 
 // Config file
 type Config struct {
-	// Generate a warning at or above this uSV level
-	RadnoteWarningLevelUsv float64 `json:"radnote_warning_at_usv,omitempty"`
-	// Number of meters away if it's in a warning region
-	RadnoteWarningRegionMeters float64 `json:"radnote_warning_region_meters,omitempty"`
+	// Generate a alert at or above this uSV level
+	RadnoteAlertLevelUsv float64 `json:"radnote_alert_at_usv,omitempty"`
+	// Number of meters away if it's in a alert region
+	RadnoteAlertRegionMeters float64 `json:"radnote_alert_region_meters,omitempty"`
+	// Generate an alert for this many minutes
+	RadnoteAlertMins int64 `json:"radnote_alert_minutes,omitempty"`
+	// If an alert is active, sample with this period
+	RadnoteAlertSampleMins int64 `json:"radnote_alert_sample_minutes,omitempty"`
+	// If an alert is active, sync with this period
+	RadnoteAlertSyncMins int64 `json:"radnote_alert_sync_minutes,omitempty"`
 }
 
 var config Config

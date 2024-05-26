@@ -140,18 +140,18 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// See if a given radnote is within a warning region
-func locationInWarningRegion(lat float64, lon float64) bool {
+// See if a given radnote is within an alert region
+func locationInAlertRegion(lat float64, lon float64) bool {
 
 	// Lock during array scan
 	radnoteLock.Lock()
 	defer radnoteLock.Unlock()
 
-	// See if this location is within a warning zone
+	// See if this location is within a alert zone
 	for _, e := range radnoteEvents {
-		if e.Body.Usv >= config.RadnoteWarningLevelUsv {
+		if e.Body.Usv >= config.RadnoteAlertLevelUsv {
 			if e.Event.BestLat != 0 || e.Event.BestLon != 0 {
-				if metersApart(e.Event.BestLat, e.Event.BestLon, lat, lon) <= config.RadnoteWarningRegionMeters {
+				if metersApart(e.Event.BestLat, e.Event.BestLon, lat, lon) <= config.RadnoteAlertRegionMeters {
 					return true
 				}
 			}
@@ -189,12 +189,14 @@ func metersApart(lat1 float64, lon1 float64, lat2 float64, lon2 float64) (distan
 func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon float64) {
 
 	o := map[string]interface{}{}
-	if locationInWarningRegion(lat, lon) {
-		o["warning"] = true
-		o["sample_mins"] = 15
-		o["outbound_mins"] = 60
+	if locationInAlertRegion(lat, lon) {
+		o["alert"] = true
+		o["sample_mins"] = config.RadnoteAlertSampleMins
+		o["sync_mins"] = config.RadnoteAlertSyncMins
+		o["alert_time"] = time.Now().UTC().Unix()
+		o["alert_mins"] = config.RadnoteAlertMins
 	} else {
-		o["warning"] = false
+		o["alert"] = false
 	}
 	oJSON, err := json.Marshal(o)
 	if err != nil {
@@ -204,7 +206,7 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	}
 
 	var i jsonfeed.Item
-	i.ID = "1"
+	i.ID = "alert"
 	i.URL = fmt.Sprintf("https://geofeeds.net/radnote/%s?lat=%f&lon=%f", i.ID, lat, lon)
 	i.ContentText = string(oJSON)
 	i.DatePublished = time.Now().UTC()
