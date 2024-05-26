@@ -28,8 +28,9 @@ func main() {
 	http.HandleFunc("/ping", httpPingHandler)
 	go func() { _ = http.ListenAndServe(":80", nil) }()
 
-	// Register radnote endpoint
+	// Register radiation endpoint
 	http.HandleFunc("/radnote", httpRadnoteHandler)
+	http.HandleFunc("/radiation", httpRadiationHandler)
 
 	// Spawn our signal handler
 	go signalHandler()

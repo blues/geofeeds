@@ -31,69 +31,33 @@ type RadnoteEventBody struct {
 }
 
 // An Event with a Radnote-specific body type added
-type RadnoteEvent struct {
-	Event note.Event       `json:"event,omitempty"`
-	Body  RadnoteEventBody `json:"body,omitempty"`
+type RadEvent struct {
+	Event note.Event `json:"event,omitempty"`
+	Usv   float64    `json:"usv,omitempty"`
 }
 
 // Loaded radnote data
-var radnoteLock sync.Mutex
-var radnoteEvents map[string]RadnoteEvent
-var radnoteFile = "radnote.json"
+var radLock sync.Mutex
+var radEvents map[string]RadEvent
+var radFile = "rad.json"
 
 // Radnote event handler
 func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// Make sure the data is loaded
-	radnoteLock.Lock()
-	if radnoteEvents == nil {
-		radnoteEvents = map[string]RadnoteEvent{}
-		contents, err := os.ReadFile(configDataDirectory + radnoteFile)
+	radLock.Lock()
+	if radEvents == nil {
+		radEvents = map[string]RadEvent{}
+		contents, err := os.ReadFile(configDataDirectory + radFile)
 		if err == nil {
-			err = note.JSONUnmarshal(contents, &radnoteEvents)
+			err = note.JSONUnmarshal(contents, &radEvents)
 			if err != nil {
-				fmt.Printf("radnote: can't load %s: %s\n", radnoteFile, err)
+				fmt.Printf("radnote: can't load %s: %s\n", radFile, err)
 			}
 		}
 	}
-	radnoteLock.Unlock()
-
-	// If GET, return the results
-	if r.Method == "GET" {
-
-		// See if lat/lon are specified
-		query := r.URL.Query()
-		latStr := query.Get("lat")
-		lonStr := query.Get("lon")
-		radiusMetersStr := query.Get("radius_meters")
-		if latStr != "" && lonStr != "" {
-			lat, latErr := strconv.ParseFloat(latStr, 64)
-			lon, lonErr := strconv.ParseFloat(lonStr, 64)
-			radiusMeters, radiusErr := strconv.ParseFloat(radiusMetersStr, 64)
-			if latErr == nil && lonErr == nil && radiusErr == nil && !(lat == 0 && lon == 0) {
-				generateJsonFeed(w, r, lat, lon, radiusMeters)
-				return
-			}
-		}
-
-		// Just retrieve the list
-		w.WriteHeader(http.StatusOK)
-		var eventJSON []byte
-		radnoteLock.Lock()
-		eventJSON, err = json.MarshalIndent(radnoteEvents, "", "    ")
-		radnoteLock.Unlock()
-		if err == nil {
-			_, _ = w.Write(eventJSON)
-		}
-		return
-	}
-
-	// If not POST, we don't know why we're here
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	radLock.Unlock()
 
 	// Get the event body
 	eventJSON, err := io.ReadAll(r.Body)
@@ -119,26 +83,60 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retain the last event and persist the body
-	radnoteLock.Lock()
-	currentEvent, exists := radnoteEvents[event.DeviceUID]
+	radLock.Lock()
+	currentEvent, exists := radEvents[event.DeviceUID]
 	if !exists || event.When >= currentEvent.Event.When {
-		radevent := RadnoteEvent{}
+		radevent := RadEvent{}
 		radevent.Event = event
 		radevent.Event.Body = nil
 		if event.Body != nil {
 			bodyJSON, _ := note.JSONMarshal(*event.Body)
-			_ = note.JSONUnmarshal(bodyJSON, &radevent.Body)
+			var rev RadnoteEventBody
+			_ = note.JSONUnmarshal(bodyJSON, &rev)
+			radevent.Usv = rev.Usv
 		}
-		radnoteEvents[event.DeviceUID] = radevent
-		eventJSON, err = json.Marshal(radnoteEvents)
+		radEvents[event.DeviceUID] = radevent
+		eventJSON, err = json.Marshal(radEvents)
 		if err == nil {
-			err = os.WriteFile(configDataDirectory+radnoteFile, eventJSON, 0644)
+			err = os.WriteFile(configDataDirectory+radFile, eventJSON, 0644)
 		}
 	}
-	radnoteLock.Unlock()
+	radLock.Unlock()
 	if err != nil {
-		fmt.Printf("radnote: can't store %s: %s\n", radnoteFile, err)
+		fmt.Printf("radnote: can't store %s: %s\n", radFile, err)
 	}
+
+}
+
+// Radiation query handler
+func httpRadiationHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	// See if lat/lon are specified, and if so, generate a feed
+	query := r.URL.Query()
+	latStr := query.Get("lat")
+	lonStr := query.Get("lon")
+	radiusMetersStr := query.Get("radius_meters")
+	if latStr != "" && lonStr != "" {
+		lat, latErr := strconv.ParseFloat(latStr, 64)
+		lon, lonErr := strconv.ParseFloat(lonStr, 64)
+		radiusMeters, radiusErr := strconv.ParseFloat(radiusMetersStr, 64)
+		if latErr == nil && lonErr == nil && radiusErr == nil && !(lat == 0 && lon == 0) {
+			generateJsonFeed(w, r, lat, lon, radiusMeters)
+			return
+		}
+	}
+
+	// Just retrieve the full list
+	w.WriteHeader(http.StatusOK)
+	var eventJSON []byte
+	radLock.Lock()
+	eventJSON, err = json.MarshalIndent(radEvents, "", "    ")
+	radLock.Unlock()
+	if err == nil {
+		_, _ = w.Write(eventJSON)
+	}
+	return
 
 }
 
@@ -179,26 +177,26 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	min := float64(0)
 	max := float64(0)
 	sum := float64(0)
-	radnoteLock.Lock()
-	for _, e := range radnoteEvents {
+	radLock.Lock()
+	for _, e := range radEvents {
 		if e.Event.BestLat != 0 || e.Event.BestLon != 0 {
 			if metersApart(e.Event.BestLat, e.Event.BestLon, lat, lon) <= radiusMeters {
 				if count == 0 {
-					min = e.Body.Usv
-					max = e.Body.Usv
+					min = e.Usv
+					max = e.Usv
 				}
-				if e.Body.Usv < min {
-					min = e.Body.Usv
+				if e.Usv < min {
+					min = e.Usv
 				}
-				if e.Body.Usv > max {
-					max = e.Body.Usv
+				if e.Usv > max {
+					max = e.Usv
 				}
-				sum += e.Body.Usv
+				sum += e.Usv
 				count++
 			}
 		}
 	}
-	radnoteLock.Unlock()
+	radLock.Unlock()
 	avg := float64(0)
 	if count > 0 {
 		avg = sum / count
