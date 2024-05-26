@@ -64,18 +64,23 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 
 		// See if lat/lon are specified
 		query := r.URL.Query()
-		lat, latErr := strconv.ParseFloat(query.Get("lat"), 64)
-		lon, lonErr := strconv.ParseFloat(query.Get("lon"), 64)
-		if latErr == nil && lonErr == nil && !(lat == 0 && lon == 0) {
-			generateJsonFeed(w, r, lat, lon)
-			return
+		latStr := query.Get("lat")
+		lonStr := query.Get("lon")
+		if latStr != "" && lonStr != "" {
+			lat, latErr := strconv.ParseFloat(latStr, 64)
+			lon, lonErr := strconv.ParseFloat(lonStr, 64)
+			if latErr == nil && lonErr == nil && !(lat == 0 && lon == 0) {
+				generateJsonFeed(w, r, lat, lon)
+				return
+			}
 		}
 
 		// Just retrieve the list
 		w.WriteHeader(http.StatusOK)
-		radnoteLock.Lock()
 		var eventJSON []byte
+		radnoteLock.Lock()
 		eventJSON, err = json.MarshalIndent(radnoteEvents, "", "    ")
+		radnoteLock.Unlock()
 		if err == nil {
 			_, _ = w.Write(eventJSON)
 		}
@@ -91,6 +96,7 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the event body
 	eventJSON, err := io.ReadAll(r.Body)
 	if err != nil {
+		fmt.Printf("radnote: error reading POSTed body: %s\n", err)
 		_, _ = w.Write([]byte(err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -98,6 +104,7 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 	event := note.Event{}
 	err = note.JSONUnmarshal(eventJSON, &event)
 	if err != nil {
+		fmt.Printf("radnote: error marshaling POSTed body: %s\n%s\n", err, eventJSON)
 		_, _ = w.Write([]byte(err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
