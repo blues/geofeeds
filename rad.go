@@ -41,11 +41,8 @@ var radLock sync.Mutex
 var radEvents map[string]RadEvent
 var radFile = "rad.json"
 
-// Radnote event handler
-func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	// Make sure the data is loaded
+// First time load of data
+func ensureLoaded() {
 	radLock.Lock()
 	if radEvents == nil {
 		radEvents = map[string]RadEvent{}
@@ -58,6 +55,14 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	radLock.Unlock()
+}
+
+// Radnote event handler
+func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	// Make sure the data is loaded
+	ensureLoaded()
 
 	// Get the event body
 	eventJSON, err := io.ReadAll(r.Body)
@@ -111,6 +116,9 @@ func httpRadnoteHandler(w http.ResponseWriter, r *http.Request) {
 // Radiation query handler
 func httpRadiationHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
+
+	// Make sure the data is loaded
+	ensureLoaded()
 
 	// See if lat/lon are specified, and if so, generate a feed
 	query := r.URL.Query()
@@ -202,6 +210,15 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 		avg = sum / count
 	}
 
+	// debug
+	if count == 0 {
+		fmt.Printf("NOT FOUND: %f,%f %f\n", lat, lon, radiusMeters)
+		radLock.Lock()
+		fmt.Printf("%+v\n", radEvents)
+		radLock.Unlock()
+	}
+	// debug
+
 	o := map[string]interface{}{}
 	o["lat"] = lat
 	o["lon"] = lon
@@ -222,6 +239,7 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	i.URL = fmt.Sprintf("https://geofeeds.net/radnote/%s?lat=%f&lon=%f", i.ID, lat, lon)
 	i.ContentText = string(oJSON)
 	i.DatePublished = time.Now().UTC()
+	i.DateModified = i.DatePublished
 
 	var f jsonfeed.Feed
 	f.Version = "https://jsonfeed.org/version/1"
