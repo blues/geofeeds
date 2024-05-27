@@ -227,6 +227,7 @@ func generateJsonFeed(w http.ResponseWriter, r *http.Request, lat float64, lon f
 	o["usv_min"] = min
 	o["usv_max"] = max
 	o["usv_avg"] = avg
+	o["modified"] = time.Now().UTC().Unix()
 	oJSON, err := json.Marshal(o)
 	if err != nil {
 		fmt.Printf("generateJsonFeed: %s\n", err)
